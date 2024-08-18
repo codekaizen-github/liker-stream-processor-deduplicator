@@ -10,11 +10,17 @@ import {
     deleteHttpSubscriber,
     findHttpSubscribers,
 } from './httpSubscriberStore';
-import { notifySubscribers, poll, subscribe } from './subscriptions';
-import { getMostRecentUpstreamControl } from './upstreamControlStore';
-import { NewStreamOut } from './types';
-import { createFencingToken, findFencingTokens } from './fencingTokenStore';
-import { processStreamEvent } from './streamProcessor';
+import {
+    notifySubscribers,
+    pollForLatest,
+    processStreamEventInTotalOrder,
+    subscribe,
+} from './subscriptions';
+import {
+    StreamEventIdDuplicateException,
+    StreamEventOutOfSequenceException,
+} from './exceptions';
+import { url } from 'inspector';
 
 // Create an Express application
 const app = express();
@@ -42,81 +48,37 @@ app.post('/streamIn', async (req, res) => {
         }
     }
 	*/
-    const input = req.body;
+    const newStreamEvent = req.body;
     await db.transaction().execute(async (trx) => {
-        async function createStreamOutAndNotifySubscribers(
-            newStreamOut: NewStreamOut
-        ) {
-            // Check to see if fencingToken was provided
-            const newStreamOutData = JSON.parse(newStreamOut.data);
-            if (newStreamOutData.fencingToken !== undefined) {
-                const incomingFencingToken = parseInt(
-                    newStreamOutData.fencingToken
-                );
-                // If a valid fencingToken is provided, check if it exists in the database before creating a new streamOut
-                if (!isNaN(incomingFencingToken)) {
-                    const fencingToken = await findFencingTokens(trx, {
-                        token: incomingFencingToken,
-                    });
-                    if (fencingToken.length > 0) {
-                        // Fencing token was used already - do nothing
-                        return;
-                    }
-                    // If the fencing token is not found, create a new fencing token
-                    const token = await createFencingToken(trx, {
-                        token: incomingFencingToken,
-                    });
-                    if (token === undefined) {
-                        return res.status(500).send();
-                    }
+        try {
+            await processStreamEventInTotalOrder(newStreamEvent, db, trx);
+        } catch (e) {
+            // Handle StreamEventIdDuplicateException and StreamEventOutOfSequenceException differently than other exceptions
+            if (e instanceof StreamEventIdDuplicateException) {
+                // If the event ID is a duplicate, we can safely ignore it
+                return res.status(200).send();
+            }
+            if (e instanceof StreamEventOutOfSequenceException) {
+                // If the event ID is out of sequence, there is an issue with the upstream service
+                // We should stop polling and wait for the upstream service to catch up
+                if (
+                    process.env
+                        .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT ===
+                    undefined
+                ) {
+                    return;
                 }
+                pollForLatest(
+                    process.env
+                        .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT,
+                    db,
+                    trx
+                );
             }
-            await processStreamEvent(newStreamOut, res, db, trx);
+            throw e;
         }
-        const upstreamControl = await getMostRecentUpstreamControl(trx);
-        const upstreamControlStreamInId = upstreamControl
-            ? upstreamControl.streamInId
-            : 0;
-        if (input.id <= upstreamControlStreamInId) {
-            return res.status(200).send();
-        }
-        if (input.id > upstreamControlStreamInId + 1) {
-            if (
-                process.env
-                    .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT ===
-                undefined
-            ) {
-                throw new Error('Upstream URL is not defined');
-            }
-            // Gets any stream events between last recorded event and this neweset event (if there are any). Hypothetically, there could be gaps in the streamIn IDs.
-            const pollResults = await poll(
-                process.env
-                    .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT,
-                upstreamControlStreamInId
-            );
-            if (pollResults.length === 0) {
-                return res.status(404).send();
-            }
-            // Assumes that the upstream service will return the events in order
-            for (const pollResult of pollResults) {
-                await createStreamOutAndNotifySubscribers({
-                    data: JSON.stringify(pollResult.data),
-                });
-            }
-        } else {
-            await createStreamOutAndNotifySubscribers({
-                data: JSON.stringify(input.data),
-            });
-        }
-        await trx.deleteFrom('upstreamControl').execute();
-        await trx
-            .insertInto('upstreamControl')
-            .values({
-                streamInId: input.id,
-            })
-            .execute();
+        return res.status(201).send();
     });
-    return res.status(201).send();
 });
 
 app.get('/streamOut', async (req, res) => {
@@ -188,6 +150,25 @@ app.listen(port, () => {
         process.env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_REGISTER,
         process.env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_CALLBACK_URL_STREAM_IN
     );
+})();
+
+// Poll for the latest log records
+(async () => {
+    await db.transaction().execute(async (trx) => {
+        if (
+            process.env
+                .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT ===
+            undefined
+        ) {
+            return;
+        }
+        await pollForLatest(
+            process.env
+                .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT,
+            db,
+            trx
+        );
+    });
 })();
 
 // Get the most recent log record and notify subscribers
