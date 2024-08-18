@@ -2,7 +2,6 @@
 import express from 'express';
 import { db } from './database';
 import {
-    createStreamOut,
     findStreamOutsGreaterThanStreamOutId,
     getMostRecentStreamOut,
 } from './streamOutStore';
@@ -15,6 +14,7 @@ import { notifySubscribers, poll, subscribe } from './subscriptions';
 import { getMostRecentUpstreamControl } from './upstreamControlStore';
 import { NewStreamOut } from './types';
 import { createFencingToken, findFencingTokens } from './fencingTokenStore';
+import { processStreamEvent } from './streamProcessor';
 
 // Create an Express application
 const app = express();
@@ -71,12 +71,7 @@ app.post('/streamIn', async (req, res) => {
                     }
                 }
             }
-            const streamOut = await createStreamOut(trx, newStreamOut);
-            if (streamOut === undefined) {
-                return res.status(500).send();
-            }
-            // non-blocking
-            notifySubscribers(db, streamOut);
+            await processStreamEvent(newStreamOut, res, db, trx);
         }
         const upstreamControl = await getMostRecentUpstreamControl(trx);
         const upstreamControlStreamInId = upstreamControl
