@@ -11,12 +11,13 @@ export async function processStreamEvent(
 ) {
     // Check to see if fencingToken was provided
     const newStreamOutData = JSON.parse(newStreamEvent.data);
-    if (newStreamOutData?.payload?.fencingToken !== undefined) {
-        const incomingFencingToken = parseInt(newStreamOutData.fencingToken);
+    const incomingFencingToken = newStreamOutData?.payload?.fencingToken;
+    if (incomingFencingToken !== undefined) {
+        const incomingFencingTokenNumeric = parseInt(incomingFencingToken);
         // If a valid fencingToken is provided, check if it exists in the database before creating a new streamOut
-        if (!isNaN(incomingFencingToken)) {
+        if (!isNaN(incomingFencingTokenNumeric)) {
             const fencingToken = await findFencingTokens(trx, {
-                token: incomingFencingToken,
+                token: incomingFencingTokenNumeric,
             });
             if (fencingToken.length > 0) {
                 // Fencing token was used already - do nothing
@@ -24,7 +25,7 @@ export async function processStreamEvent(
             }
             // If the fencing token is not found, create a new fencing token
             const token = await createFencingToken(trx, {
-                token: incomingFencingToken,
+                token: incomingFencingTokenNumeric,
             });
             if (token === undefined) {
                 throw new Error('Failed to create fencing token');
