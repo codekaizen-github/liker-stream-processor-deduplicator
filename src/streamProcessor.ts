@@ -11,7 +11,7 @@ export async function processStreamEvent(
 ) {
     // Check to see if fencingToken was provided
     const newStreamOutData = JSON.parse(newStreamEvent.data);
-    if (newStreamOutData.fencingToken !== undefined) {
+    if (newStreamOutData?.payload?.fencingToken !== undefined) {
         const incomingFencingToken = parseInt(newStreamOutData.fencingToken);
         // If a valid fencingToken is provided, check if it exists in the database before creating a new streamOut
         if (!isNaN(incomingFencingToken)) {
