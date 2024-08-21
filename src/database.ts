@@ -4,16 +4,16 @@ import { Kysely, MysqlDialect } from "kysely";
 import { env } from "process";
 import e from "express";
 
-const poolConfig = {
-	database: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_NAME,
-	host: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_HOSTNAME,
-	user: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_USER,
-	password: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_PASSWORD,
-	port: 3306,
-	connectionLimit: 10,
-};
 const dialect = new MysqlDialect({
-	pool: createPool(poolConfig),
+	pool: createPool({
+		database: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_NAME,
+		host: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_HOSTNAME,
+		user: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_USER,
+		password: env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_DB_PASSWORD,
+		port: 3306,
+		connectionLimit: 10,
+		jsonStrings: true,
+	}),
 });
 
 // Database interface is passed to Kysely's constructor, and from now on, Kysely
