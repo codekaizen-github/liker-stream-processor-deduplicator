@@ -1,16 +1,17 @@
 import { createFencingToken, findFencingTokens } from './fencingTokenStore';
-import { createStreamOut } from './streamOutStore';
+import { createStreamOutFromStreamEvent } from './streamOutStore';
 import { notifySubscribers } from './subscriptions';
-import { Database, NewStreamOut } from './types';
-import { Kysely, Transaction } from 'kysely';
+import { Database, NewStreamEvent } from './types';
+import { Transaction } from 'kysely';
 
 export async function processStreamEvent(
-    newStreamEvent: NewStreamOut,
-    db: Kysely<Database>,
-    trx: Transaction<Database>
+    trx: Transaction<Database>,
+    newStreamEvent: NewStreamEvent
 ) {
+    console.log({ newStreamEvent });
     // Check to see if fencingToken was provided
-    const newStreamOutData = JSON.parse(newStreamEvent.data);
+    // const newStreamOutData = JSON.parse(newStreamEvent.data);
+    const newStreamOutData = newStreamEvent.data;
     const incomingFencingToken = newStreamOutData?.payload?.fencingToken;
     if (incomingFencingToken !== undefined) {
         const incomingFencingTokenNumeric = parseInt(incomingFencingToken);
@@ -32,9 +33,9 @@ export async function processStreamEvent(
             }
         }
     }
-    const streamOut = await createStreamOut(trx, newStreamEvent);
+    const streamOut = await createStreamOutFromStreamEvent(trx, newStreamEvent);
     if (streamOut === undefined) {
         throw new Error('Failed to create stream out');
     }
-    notifySubscribers(db, streamOut);
+    notifySubscribers(trx, streamOut);
 }
