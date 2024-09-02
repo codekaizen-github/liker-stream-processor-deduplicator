@@ -44,7 +44,8 @@ export type HttpSubscriptionUpdate = Updateable<HttpSubscriberTable>;
 
 export interface UpstreamControlTable {
     id: number; // Will always be 0
-    streamInId: number;
+    streamId: number;
+    totalOrderId: number;
 }
 
 export type UpstreamControl = Selectable<UpstreamControlTable>;

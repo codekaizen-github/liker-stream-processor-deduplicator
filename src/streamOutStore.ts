@@ -31,7 +31,7 @@ export async function findStreamOuts(
     return await query.selectAll().execute();
 }
 
-export async function findStreamOutsGreaterThanStreamOutId(
+export async function findStreamOutsGreaterThanStreamId(
     trx: Transaction<Database>,
     id: number
 ) {
@@ -64,19 +64,19 @@ export async function updateStreamOut(
 }
 
 export async function createStreamOutFromStreamEvent(
-        trx: Transaction<Database>,
-        streamEvent: NewStreamEvent | OrderedStreamEvent
-    ) {
-        const streamOut = await createStreamOut(trx, {
-            ...streamEvent,
-            id: undefined,
-            data: JSON.stringify(streamEvent.data),
-        });
-        if (streamOut === undefined) {
-            return undefined;
-        }
-        return streamOut;
+    trx: Transaction<Database>,
+    streamEvent: NewStreamEvent | OrderedStreamEvent
+) {
+    const streamOut = await createStreamOut(trx, {
+        ...streamEvent,
+        id: undefined,
+        data: JSON.stringify(streamEvent.data),
+    });
+    if (streamOut === undefined) {
+        return undefined;
     }
+    return streamOut;
+}
 
 export async function createStreamOut(
     trx: Transaction<Database>,
