@@ -40,7 +40,7 @@ export async function onEventProcessSingle(event: TotallyOrderedStreamEvent) {
                 throw new StreamEventIdDuplicateException();
             }
             if (upstreamControl.streamId + 1 === event.id) {
-                console.log('we have a winner! on 2nd pass');
+                console.log('we have a winner!');
                 const results = await processStreamEvent(trx, event);
                 const upstreamControlToUpdate = {
                     id: 0,
