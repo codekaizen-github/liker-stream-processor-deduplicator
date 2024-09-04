@@ -22,6 +22,7 @@ export interface Database {
 // `NewPerson` and `PersonUpdate` types below.
 export interface StreamOutTable {
     id: Generated<number>;
+    totalOrderId: number;
     data: any;
 }
 

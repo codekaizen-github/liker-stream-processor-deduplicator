@@ -4,6 +4,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     await db.schema
         .createTable('streamOut')
         .addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+        .addColumn('totalOrderId', 'integer', (col) => col.notNull())
         // Add an arbitrary JSON column
         .addColumn('data', 'json', (col) => col.notNull())
         .execute();

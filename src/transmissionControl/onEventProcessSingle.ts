@@ -42,11 +42,13 @@ export async function onEventProcessSingle(event: TotallyOrderedStreamEvent) {
             if (upstreamControl.streamId + 1 === event.id) {
                 console.log('we have a winner! on 2nd pass');
                 const results = await processStreamEvent(trx, event);
-                await updateUpstreamControl(trx, 0, {
+                const upstreamControlToUpdate = {
                     id: 0,
                     streamId: event.id,
                     totalOrderId: event.totalOrderId,
-                });
+                };
+                console.log({ upstreamControlToUpdate });
+                await updateUpstreamControl(trx, 0, upstreamControlToUpdate);
                 return results;
             }
             throw new StreamEventOutOfSequenceException();
