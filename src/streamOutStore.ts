@@ -35,6 +35,18 @@ export async function findStreamOuts(
     return await query.selectAll().execute();
 }
 
+export async function findTotallyOrderedStreamEventsGreaterThanStreamId(
+    trx: Transaction<Database>,
+    id: number
+): Promise<TotallyOrderedStreamEvent[]> {
+    let query = trx
+        .selectFrom('streamOut')
+        .where('id', '>', id)
+        .orderBy('id', 'asc');
+    const queryResults = await query.selectAll().execute();
+    return queryResults;
+}
+
 export async function findStreamOutsGreaterThanStreamId(
     trx: Transaction<Database>,
     id: number
@@ -74,7 +86,7 @@ export async function createStreamOutFromStreamEvent(
     const streamOut = await createStreamOut(trx, {
         ...streamEvent,
         id: undefined,
-        data: JSON.stringify(streamEvent.data),
+        totalOrderId: streamEvent.totalOrderId,
     });
     if (streamOut === undefined) {
         return undefined;
@@ -88,10 +100,16 @@ export async function createStreamOut(
 ) {
     const { insertId } = await trx
         .insertInto('streamOut')
-        .values(streamOut)
+        .values({
+            ...streamOut,
+            data: JSON.stringify(streamOut.data),
+        })
         .executeTakeFirstOrThrow();
-
-    return await findStreamOutById(trx, Number(insertId!));
+    const streamOutResult = await findStreamOutById(trx, Number(insertId));
+    if (streamOutResult === undefined) {
+        throw new Error('Failed to create stream out');
+    }
+    return streamOutResult;
 }
 
 export async function deleteStreamOut(trx: Transaction<Database>, id: number) {

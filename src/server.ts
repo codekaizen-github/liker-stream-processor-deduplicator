@@ -2,7 +2,9 @@
 import express from 'express';
 import { db } from './database';
 import {
+    createStreamOutFromStreamEvent,
     findStreamOutsGreaterThanStreamId,
+    findTotallyOrderedStreamEventsGreaterThanStreamId,
     getMostRecentStreamOut,
 } from './streamOutStore';
 import {
@@ -20,6 +22,7 @@ import { syncUpstream } from './transmissionControl/syncUpstream';
 import { subscribe } from './subscribe';
 import { notifySubscribers } from './transmissionControl/notifySubscribers';
 import { getMostRecentTotallyOrderedStreamEvent } from './getMostRecentTotallyOrderedStreamEvent';
+
 // Create an Express application
 const app = express();
 
@@ -64,10 +67,11 @@ app.get('/streamOut', async (req, res) => {
         .transaction()
         .setIsolationLevel('serializable')
         .execute(async (trx) => {
-            const records = await findStreamOutsGreaterThanStreamId(
-                trx,
-                afterId
-            );
+            const records =
+                await findTotallyOrderedStreamEventsGreaterThanStreamId(
+                    trx,
+                    afterId
+                );
             return res.json(records);
         });
     // Find all log records with an ID greater than 'afterId'
@@ -139,17 +143,22 @@ app.listen(port, () => {
 
 // Poll for the latest log records
 (async () => {
-    if (
-        process.env
-            .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT ===
-        undefined
-    ) {
-        return;
+    try {
+        if (
+            process.env
+                .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT ===
+            undefined
+        ) {
+            return;
+        }
+        const fetchUpstream = buildFetchUpstream(
+            process.env
+                .LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT
+        );
+        await syncUpstream(fetchUpstream);
+    } catch (e) {
+        console.error(e);
     }
-    const fetchUpstream = buildFetchUpstream(
-        process.env.LIKER_STREAM_PROCESSOR_DEDUPLICATOR_UPSTREAM_URL_STREAM_OUT
-    );
-    await syncUpstream(fetchUpstream);
 })();
 
 // Get the most recent log record and notify subscribers
