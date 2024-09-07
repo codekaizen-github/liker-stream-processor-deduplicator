@@ -32,10 +32,6 @@ export async function createTotallyOrderedStreamEvents(
     if (streamOut === undefined) {
         throw new Error('Failed to create stream out');
     }
-    results.push({
-        id: streamOut.id,
-        totalOrderId: streamOut.id,
-        data: streamOut.data,
-    });
+    results.push(streamOut);
     return results;
 }
