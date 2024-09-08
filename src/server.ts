@@ -1,21 +1,12 @@
 // Import the 'express' module
 import express from 'express';
 import { db } from './database';
-import {
-    createStreamOutFromStreamEvent,
-    findStreamOutsGreaterThanStreamId,
-    findTotallyOrderedStreamEventsGreaterThanStreamId,
-    getMostRecentStreamOut,
-} from './streamOutStore';
+import { findTotallyOrderedStreamEvents } from './streamOutStore';
 import {
     createHttpSubscriber,
     deleteHttpSubscriber,
     findHttpSubscribers,
 } from './httpSubscriberStore';
-import {
-    StreamEventIdDuplicateException,
-    StreamEventOutOfSequenceException,
-} from './exceptions';
 import onEvent from './transmissionControl/onEvent';
 import { buildFetchUpstream } from './transmissionControl/buildFetchUpstream';
 import { syncUpstream } from './transmissionControl/syncUpstream';
@@ -61,17 +52,28 @@ app.post('/streamIn', async (req, res) => {
 });
 
 app.get('/streamOut', async (req, res) => {
-    // Get the query parameter 'afterId' from the request
-    const afterId = Number(req.query.afterId);
+    // Ignore
+    const totalOrderId = Number(req.query.totalOrderId);
+    const eventIdStart = Number(req.query.eventIdStart);
+    const eventIdEnd = req.query.eventIdEnd
+        ? Number(req.query.eventIdEnd)
+        : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const offset = req.query.offset ? Number(req.query.offset) : undefined;
     await db
         .transaction()
         .setIsolationLevel('serializable')
         .execute(async (trx) => {
-            const records =
-                await findTotallyOrderedStreamEventsGreaterThanStreamId(
-                    trx,
-                    afterId
-                );
+            // Get our upstream data if necessary
+
+            // Get our upstream
+            const records = await findTotallyOrderedStreamEvents(
+                trx,
+                eventIdStart,
+                eventIdEnd,
+                limit,
+                offset
+            );
             return res.json(records);
         });
     // Find all log records with an ID greater than 'afterId'
