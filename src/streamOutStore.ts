@@ -1,5 +1,11 @@
 import { SelectQueryBuilder, Transaction } from 'kysely';
-import { StreamOutUpdate, StreamOut, NewStreamOut, Database } from './types';
+import {
+    StreamOutUpdate,
+    StreamOut,
+    NewStreamOut,
+    Database,
+    NewStreamEvent,
+} from './types';
 import {
     NewTotallyOrderedStreamEvent,
     TotallyOrderedStreamEvent,
@@ -100,13 +106,23 @@ export async function getMostRecentStreamOut(trx: Transaction<Database>) {
 export async function getMostRecentStreamOutsWithSameTotalOrderId(
     trx: Transaction<Database>
 ) {
-    const results = await trx
+    // Get the max totalOrderId
+    const mostRecent = await trx
         .selectFrom('streamOut')
         .orderBy('id', 'desc')
         .limit(1)
         .selectAll()
         .executeTakeFirst();
-    return results === undefined ? [] : [results];
+    if (mostRecent === undefined) {
+        return [];
+    }
+    const results = await trx
+        .selectFrom('streamOut')
+        .where('totalOrderId', '=', mostRecent.totalOrderId)
+        .orderBy('id', 'asc')
+        .selectAll()
+        .execute();
+    return results === undefined ? [] : results;
 }
 
 export async function updateStreamOut(
@@ -123,11 +139,12 @@ export async function updateStreamOut(
 
 export async function createStreamOutFromStreamEvent(
     trx: Transaction<Database>,
-    streamEvent: NewStreamOut
+    streamEvent: NewTotallyOrderedStreamEvent
 ) {
     const streamOut = await createStreamOut(trx, {
-        ...streamEvent,
-        id: undefined,
+        streamId: streamEvent.streamId,
+        totalOrderId: streamEvent.totalOrderId,
+        data: streamEvent.data,
     });
     if (streamOut === undefined) {
         return undefined;
@@ -137,7 +154,7 @@ export async function createStreamOutFromStreamEvent(
 
 export async function createStreamOut(
     trx: Transaction<Database>,
-    streamOut: NewStreamOut
+    streamOut: NewTotallyOrderedStreamEvent
 ) {
     const { insertId } = await trx
         .insertInto('streamOut')

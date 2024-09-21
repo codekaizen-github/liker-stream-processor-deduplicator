@@ -48,10 +48,10 @@ export async function createTotallyOrderedStreamEvents(
     }
     const incrementorControlToUpdate = {
         id: 0,
-        streamId: incrementorControl.streamId + 1,
+        streamId: incrementorControl.streamId,
     };
     const streamOut = await createStreamOutFromStreamEvent(trx, {
-        streamId: incrementorControlToUpdate.streamId,
+        streamId: ++incrementorControlToUpdate.streamId,
         totalOrderId: streamEvent.totalOrderId,
         data: streamEvent.data,
     });
