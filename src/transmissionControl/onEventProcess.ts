@@ -59,9 +59,6 @@ export async function onEventProcess(
                     if (e instanceof StreamEventIdDuplicateException) {
                         continue;
                     }
-                    if (e instanceof StreamEventOutOfSequenceException) {
-                        throw e;
-                    }
                     throw e;
                 }
             }
