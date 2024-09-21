@@ -62,7 +62,12 @@ export async function findTotallyOrderedStreamEvents(
         }
     }
     const queryResults = await query.selectAll().orderBy('id', 'asc').execute();
-    return queryResults;
+    return queryResults.map((result) => {
+        return {
+            ...result,
+            totalOrderId: result.id,
+        };
+    });
 }
 
 export async function findTotallyOrderedStreamEventsGreaterThanStreamId(
@@ -74,7 +79,12 @@ export async function findTotallyOrderedStreamEventsGreaterThanStreamId(
         .where('id', '>', id)
         .orderBy('id', 'asc');
     const queryResults = await query.selectAll().execute();
-    return queryResults;
+    return queryResults.map((result) => {
+        return {
+            ...result,
+            totalOrderId: result.id,
+        };
+    });
 }
 
 export async function findStreamOutsGreaterThanStreamId(
@@ -95,6 +105,18 @@ export async function getMostRecentStreamOut(trx: Transaction<Database>) {
         .limit(1)
         .selectAll()
         .executeTakeFirst();
+}
+
+export async function getMostRecentStreamOutsWithSameTotalOrderId(
+    trx: Transaction<Database>
+) {
+    const results = await trx
+        .selectFrom('streamOut')
+        .orderBy('id', 'desc')
+        .limit(1)
+        .selectAll()
+        .executeTakeFirst();
+    return results === undefined ? [] : [results];
 }
 
 export async function updateStreamOut(
