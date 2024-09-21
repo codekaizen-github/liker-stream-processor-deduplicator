@@ -62,12 +62,7 @@ export async function findTotallyOrderedStreamEvents(
         }
     }
     const queryResults = await query.selectAll().orderBy('id', 'asc').execute();
-    return queryResults.map((result) => {
-        return {
-            ...result,
-            totalOrderId: result.id,
-        };
-    });
+    return queryResults;
 }
 
 export async function findTotallyOrderedStreamEventsGreaterThanStreamId(
@@ -79,12 +74,7 @@ export async function findTotallyOrderedStreamEventsGreaterThanStreamId(
         .where('id', '>', id)
         .orderBy('id', 'asc');
     const queryResults = await query.selectAll().execute();
-    return queryResults.map((result) => {
-        return {
-            ...result,
-            totalOrderId: result.id,
-        };
-    });
+    return queryResults;
 }
 
 export async function findStreamOutsGreaterThanStreamId(
