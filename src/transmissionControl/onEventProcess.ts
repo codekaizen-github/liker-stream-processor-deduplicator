@@ -43,14 +43,15 @@ export async function onEventProcess(
                 totalOrderId: totalOrderId,
             };
             for (const event of events) {
+                console.log({event})
                 try {
-                    if (upstreamControlToUpdate.streamId >= event.id) {
+                    if (upstreamControlToUpdate.streamId >= event.streamId) {
                         throw new StreamEventIdDuplicateException();
                     }
                     // todo: streamId used for the new event should be based upon a counter, not autoincrement. We will need to create a counter for this as well. Maybe in a different table from upstreamControl?
-                    if (upstreamControlToUpdate.streamId + 1 === event.id) {
+                    if (upstreamControlToUpdate.streamId + 1 === event.streamId) {
                         results.push(...(await processStreamEvent(trx, event)));
-                        upstreamControlToUpdate.streamId = event.id;
+                        upstreamControlToUpdate.streamId = event.streamId;
                         continue;
                     }
                     throw new StreamEventOutOfSequenceException();
