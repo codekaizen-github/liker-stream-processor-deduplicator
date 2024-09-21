@@ -57,7 +57,6 @@ app.post('/streamIn', async (req, res) => {
         console.error(e);
         if (e instanceof StreamEventOutOfSequenceException) {
             try {
-                console.log('Out of sequence event ID', event);
                 const upstreamControl = await getUpstreamControl();
                 const responseBody = await fetchUpstreamFunc(
                     totalOrderId,
@@ -65,7 +64,6 @@ app.post('/streamIn', async (req, res) => {
                 );
                 await onEvent(responseBody.events, responseBody.totalOrderId);
             } catch (e) {
-                console.log({ e });
                 return res.status(500).send();
             }
         }
@@ -75,7 +73,6 @@ app.post('/streamIn', async (req, res) => {
 });
 
 app.get('/streamOut', async (req, res) => {
-    console.log({ query: JSON.stringify(req.query) });
     // Ignore
     let totalOrderId = !isNaN(Number(req.query.totalOrderId))
         ? Number(req.query.totalOrderId)

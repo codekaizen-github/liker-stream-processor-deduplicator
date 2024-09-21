@@ -133,7 +133,7 @@ export async function updateStreamOut(
 
 export async function createStreamOutFromStreamEvent(
     trx: Transaction<Database>,
-    streamEvent: NewTotallyOrderedStreamEvent
+    streamEvent: NewStreamOut
 ) {
     const streamOut = await createStreamOut(trx, {
         ...streamEvent,
@@ -157,6 +157,7 @@ export async function createStreamOut(
         })
         .executeTakeFirstOrThrow();
     const streamOutResult = await findStreamOutById(trx, Number(insertId));
+    console.log({ streamOutResult });
     if (streamOutResult === undefined) {
         throw new Error('Failed to create stream out');
     }

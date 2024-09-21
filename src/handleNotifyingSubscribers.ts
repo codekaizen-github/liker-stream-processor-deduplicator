@@ -10,11 +10,7 @@ export async function handleNotifyingSubscribers(
         return await findHttpSubscribers(trx, {});
     });
     for (const subscription of subscriptions) {
-        // non-blocking
-        console.log('notifying:', {
-            url: subscription.url,
-            streamOut: JSON.stringify(streamOut),
-        });
+        // non-blockink
         notifySubscriberUrl(subscription.url, streamOut, totalOrderId);
     }
 }
@@ -24,7 +20,6 @@ export async function notifySubscriberUrl(
     streamOut: TotallyOrderedStreamEvent[],
     totalOrderId: number
 ): Promise<void> {
-    console.log('notifying subscriber:', { streamOut });
     try {
         await fetch(url, {
             method: 'POST',

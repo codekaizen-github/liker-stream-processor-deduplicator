@@ -10,8 +10,12 @@ import {
 } from '../upstreamControlStore';
 import { processStreamEvent } from './processStreamEvent';
 import { TotallyOrderedStreamEvent } from './types';
+import { UpstreamControlUpdate } from '../types';
 
-export async function onEventProcess(events: TotallyOrderedStreamEvent[], totalOrderId: number) {
+export async function onEventProcess(
+    events: TotallyOrderedStreamEvent[],
+    totalOrderId: number
+) {
     const results = await db
         .transaction()
         .setIsolationLevel('serializable')
@@ -30,10 +34,6 @@ export async function onEventProcess(events: TotallyOrderedStreamEvent[], totalO
                 }
             );
             const upstreamControl = await getUpstreamControlForUpdate(trx, 0);
-            console.log({
-                events: events,
-                upstreamControl,
-            });
             if (upstreamControl === undefined) {
                 throw new Error('Failed to get upstream control lock');
             }
@@ -47,8 +47,8 @@ export async function onEventProcess(events: TotallyOrderedStreamEvent[], totalO
                     if (upstreamControlToUpdate.streamId >= event.id) {
                         throw new StreamEventIdDuplicateException();
                     }
+                    // todo: streamId used for the new event should be based upon a counter, not autoincrement. We will need to create a counter for this as well. Maybe in a different table from upstreamControl?
                     if (upstreamControlToUpdate.streamId + 1 === event.id) {
-                        console.log('we have a winner!');
                         results.push(...(await processStreamEvent(trx, event)));
                         upstreamControlToUpdate.streamId = event.id;
                         continue;
@@ -56,11 +56,9 @@ export async function onEventProcess(events: TotallyOrderedStreamEvent[], totalO
                     throw new StreamEventOutOfSequenceException();
                 } catch (e) {
                     if (e instanceof StreamEventIdDuplicateException) {
-                        console.log('Duplicate event ID', event);
                         continue;
                     }
                     if (e instanceof StreamEventOutOfSequenceException) {
-                        console.log('Out of sequence event ID', event);
                         throw e;
                     }
                     throw e;
