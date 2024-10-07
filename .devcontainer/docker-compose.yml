@@ -9,6 +9,8 @@ services:
         networks:
             - liker_external_network
             - liker_stream_processor_deduplicator_internal_network
+        dns:
+            - 8.8.8.8
     db:
         networks:
             - liker_stream_processor_deduplicator_internal_network
@@ -24,7 +26,7 @@ services:
 networks:
     liker_external_network:
         external: true
-        name: "liker"
+        name: 'liker'
     liker_stream_processor_deduplicator_internal_network:
         external: false
-        name: "liker_stream_processor_deduplicator_internal_network"
+        name: 'liker_stream_processor_deduplicator_internal_network'
